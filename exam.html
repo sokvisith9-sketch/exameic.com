@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>English Exam — 2-step (1 hour)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    :root{--bg:#f5f8fb;--card:#fff;--accent:#0b7dda;--muted:#6b7785}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:0;background:var(--bg);color:#0b1a2b}
+    .wrap{max-width:1100px;margin:28px auto;padding:18px}
+    .card{background:var(--card);padding:20px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.06)}
+    h1{margin:0 0 8px}
+    label{display:block;margin:10px 0 6px;font-weight:600}
+    input[type=text], input[type=email]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6edf3}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    .btn{background:var(--accent);color:#fff;padding:10px 14px;border-radius:10px;border:0;cursor:pointer;font-weight:600}
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(11,125,218,0.12)}
+    .question{margin:16px 0;padding:12px;border-radius:10px;border:1px solid #eef4fb;background:#fcfeff}
+    .options{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    #timer{position:fixed;top:18px;right:18px;background:#081a2b;color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;box-shadow:0 6px 18px rgba(2,6,23,0.12)}
+    .hidden{display:none}
+    .result{margin-top:14px;padding:12px;border-radius:8px}
+    .ok{background:#ecfbf1;border:1px solid #c9f0d2;color:#07632b}
+    .err{background:#fff5f5;border:1px solid #ffd6d6;color:#7a0d0d}
+    footer{font-size:13px;color:var(--muted);margin-top:12px}
+    @media (max-width:800px){#timer{position:static;margin-top:12px}}
+  </style>
+</head>
+<body>
+  <div id="timer" class="hidden">60:00</div>
+
+  <div class="wrap">
+    <!-- STEP 1 -->
+    <div class="card" id="step1">
+      <h1>Student Information</h1>
+      <p style="color:var(--muted)">Fill required fields then click Next. Each correct answer = <strong>5 points</strong>. Time limit = <strong>60 minutes</strong>.</p>
+
+      <label for="name">Full name</label>
+      <input id="name" type="text" placeholder="Sok Dara">
+
+      <div class="row">
+        <div class="col">
+          <label for="studentId">Student ID</label>
+          <input id="studentId" type="text" placeholder="2025-001">
+        </div>
+        <div class="col">
+          <label for="className">Class / Grade</label>
+          <input id="className" type="text" placeholder="Grade 9">
+        </div>
+      </div>
+
+      <label for="email">Email (optional)</label>
+      <input id="email" type="email" placeholder="example@gmail.com">
+
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn" id="toQuiz">Next →</button>
+      </div>
+
+      <div id="info" class="result hidden"></div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="card hidden" id="step2">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <h1>English Grammar Exam — 20 Qs</h1>
+          <div style="color:var(--muted)">Name: <span id="mName"></span> • ID: <span id="mId"></span> • Class: <span id="mClass"></span></div>
+        </div>
+        <div>
+          <div style="color:var(--muted);text-align:right">Each correct = 5 points • Time left shown top-right</div>
+          <button class="btn ghost" id="showAll">Show all</button>
+        </div>
+      </div>
+
+      <form id="quizForm"></form>
+
+      <div style="display:flex;justify-content:space-between;margin-top:10px">
+        <button class="btn ghost" id="backBtn">← Back</button>
+        <div>
+          <button class="btn" id="submitBtn" type="button">Submit & Send</button>
+        </div>
+      </div>
+
+      <div id="resultArea" class="hidden">
+        <div id="scoreBox" class="result"></div>
+        <div id="feedback"></div>
+      </div>
+    </div>
+
+    <footer>Make sure to deploy Google Apps Script and paste its Web App URL into the JS config (WEB_APP_URL).</footer>
+  </div>
+
+<script>
+/* ===== CONFIG - REPLACE with your deployed Apps Script Web App URL ===== */
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzAlQ7eEBzWc5t4U3SWbfvz3VopxRxX1UA6exNNMDUMJhJL0hf6tAatmjcXz04e38RJKQ/exec'; // <-- paste the Web App URL here
+
+/* ===== Quiz dataset (20 Qs) ===== */
+const QUESTIONS = [
+  {q:'She ___ to school every day.', opts:['go','goes','going','gone'], a:1},
+  {q:'They ___ dinner when I arrived.', opts:['have','are having','were having','had'], a:2},
+  {q:'If I ___ enough money, I will buy a new phone.', opts:['had','have','will have','having'], a:1},
+  {q:'The book ___ on the table is mine.', opts:['lying','lie','lies','lay'], a:0},
+  {q:'I haven’t seen him ___ last week.', opts:['since','for','from','by'], a:0},
+  {q:'The letter ___ by my teacher yesterday.', opts:['was written','wrote','writes','has written'], a:0},
+  {q:'She is ___ honest person.', opts:['a','an','the','no article'], a:1},
+  {q:'He is taller ___ his brother.', opts:['than','then','that','as'], a:0},
+  {q:'I prefer tea ___ coffee.', opts:['than','from','to','over'], a:2},
+  {q:"Let's go out, ___ we?", opts:['shall','do','will','aren\'t'], a:0},
+  {q:'She said she ___ tired.', opts:['is','was','were','has been'], a:1},
+  {q:'The students ___ by the teacher now.', opts:['are being taught','were taught','taught','are taught'], a:0},
+  {q:'He ___ swim very fast when he was young.', opts:['can','could','may','should'], a:1},
+  {q:'I have lived here ___ five years.', opts:['since','for','from','during'], a:1},
+  {q:'You must ___ your homework before watching TV.', opts:['to finish','finish','finishing','finished'], a:1},
+  {q:'This is the man ___ helped me.', opts:['who','which','whose','whom'], a:0},
+  {q:'She sings ___ than anyone else.', opts:['good','well','better','best'], a:2},
+  {q:'I don’t know ___ he is coming or not.', opts:['whether','if','that','what'], a:0},
+  {q:'There isn’t ___ milk left in the fridge.', opts:['many','some','any','a'], a:2},
+  {q:'I wish I ___ taller.', opts:['am','was','were','be'], a:2}
+];
+
+const POINTS_PER = 5;
+const MAX_SCORE = QUESTIONS.length * POINTS_PER;
+let countdownInterval = null;
+const DURATION_MINUTES = 60;
+
+/* Elements */
+const step1 = document.getElementById('step1');
+const step2 = document.getElementById('step2');
+const toQuiz = document.getElementById('toQuiz');
+const info = document.getElementById('info');
+const mName = document.getElementById('mName');
+const mId = document.getElementById('mId');
+const mClass = document.getElementById('mClass');
+const quizForm = document.getElementById('quizForm');
+const backBtn = document.getElementById('backBtn');
+const submitBtn = document.getElementById('submitBtn');
+const resultArea = document.getElementById('resultArea');
+const scoreBox = document.getElementById('scoreBox');
+const feedback = document.getElementById('feedback');
+const showAllBtn = document.getElementById('showAll');
+const timerEl = document.getElementById('timer');
+
+/* Render questions */
+function renderQuestions(showAll=false) {
+  quizForm.innerHTML = '';
+  QUESTIONS.forEach((item, idx) => {
+    const w = document.createElement('div');
+    w.className = 'question';
+    w.dataset.idx = idx;
+    w.innerHTML = `<div><strong>Q${idx+1}.</strong> ${item.q}</div>`;
+    const opts = document.createElement('div');
+    opts.className = 'options';
+    item.opts.forEach((opt, oidx) => {
+      const id = `q${idx}_opt${oidx}`;
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="radio" name="q${idx}" id="${id}" value="${oidx}"> ${String.fromCharCode(65+oidx)}. ${opt}`;
+      opts.appendChild(label);
+    });
+    w.appendChild(opts);
+    if (!showAll && idx !== 0) w.style.display = 'none';
+    quizForm.appendChild(w);
+  });
+
+  if (!showAll) {
+    const nav = document.createElement('div');
+    nav.style.marginTop = '10px';
+    nav.style.display = 'flex';
+    nav.style.justifyContent = 'space-between';
+    const prev = document.createElement('button'); prev.type='button'; prev.className='btn ghost'; prev.textContent='Previous';
+    const next = document.createElement('button'); next.type='button'; next.className='btn'; next.textContent='Next';
+    nav.appendChild(prev); nav.appendChild(next);
+    quizForm.appendChild(nav);
+    prev.addEventListener('click', ()=>navigate(-1));
+    next.addEventListener('click', ()=>navigate(1));
+  }
+}
+function navigate(dir) {
+  const visibles = Array.from(quizForm.querySelectorAll('.question'));
+  const currIdx = visibles.findIndex(el=>el.style.display !== 'none');
+  let next = currIdx + dir;
+  if (next < 0) next = 0;
+  if (next >= visibles.length) next = visibles.length - 1;
+  visibles.forEach((el,i)=> el.style.display = (i===next)?'block':'none');
+}
+
+/* Timer */
+function startTimer(durationMin) {
+  let remaining = durationMin * 60; // seconds
+  timerEl.classList.remove('hidden');
+  updateTimerDisplay(remaining);
+  countdownInterval = setInterval(() => {
+    remaining--;
+    if (remaining < 0) {
+      clearInterval(countdownInterval);
+      timerEl.textContent = 'Time up';
+      autoSubmitOnTimeout();
+      return;
+    }
+    updateTimerDisplay(remaining);
+  }, 1000);
+}
+function updateTimerDisplay(sec) {
+  const mm = Math.floor(sec / 60).toString().padStart(2,'0');
+  const ss = (sec % 60).toString().padStart(2,'0');
+  timerEl.textContent = `${mm}:${ss}`;
+}
+
+/* Auto-submit when time up */
+function autoSubmitOnTimeout() {
+  alert('Time is up. The exam will be submitted automatically.');
+  submitExam(); // submit
+}
+
+/* Duplicate check via GET */
+async function checkDuplicate(studentId, email) {
+  if (!WEB_APP_URL || WEB_APP_URL.includes('REPLACE_WITH')) {
+    return {ok:true, exists:false, warning:'WEB_APP_URL not configured (duplicate check skipped).'};
+  }
+  try {
+    if (studentId) {
+      const res = await fetch(`${WEB_APP_URL}?checkId=${encodeURIComponent(studentId)}`);
+      const j = await res.json();
+      if (j.exists) return {ok:true, exists:true, by:'id'};
+    }
+    if (email) {
+      const res2 = await fetch(`${WEB_APP_URL}?checkEmail=${encodeURIComponent(email)}`);
+      const j2 = await res2.json();
+      if (j2.exists) return {ok:true, exists:true, by:'email'};
+    }
+    return {ok:true, exists:false};
+  } catch (err) {
+    return {ok:false, error: err.message};
+  }
+}
+
+/* Send result POST */
+async function sendResult(payload) {
+  if (!WEB_APP_URL || WEB_APP_URL.includes('REPLACE_WITH')) {
+    throw new Error('WEB_APP_URL not configured. Paste your Apps Script Web App URL in the JS config.');
+  }
+  const res = await fetch(WEB_APP_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+/* Event: Next */
+toQuiz.addEventListener('click', async () => {
+  const name = document.getElementById('name').value.trim();
+  const studentId = document.getElementById('studentId').value.trim();
+  const className = document.getElementById('className').value.trim();
+  const email = document.getElementById('email').value.trim();
+
+  if (!name || !studentId || !className) {
+    info.className = 'result err';
+    info.textContent = 'Please fill Name, Student ID and Class.';
+    info.classList.remove('hidden');
+    return;
+  }
+  info.classList.add('hidden');
+
+  // Duplicate check
+  const chk = await checkDuplicate(studentId, email);
+  if (!chk.ok) {
+    if (!confirm('Could not check duplicate (network). Continue?')) return;
+  } else if (chk.exists) {
+    alert('You have already submitted the exam (duplicate found by ' + chk.by + '). You cannot take the exam again.');
+    return;
+  }
+
+  // store meta
+  sessionStorage.setItem('exam_name', name);
+  sessionStorage.setItem('exam_id', studentId);
+  sessionStorage.setItem('exam_class', className);
+  sessionStorage.setItem('exam_email', email);
+
+  mName.textContent = name;
+  mId.textContent = studentId;
+  mClass.textContent = className;
+
+  step1.classList.add('hidden');
+  step2.classList.remove('hidden');
+  renderQuestions(false);
+  startTimer(DURATION_MINUTES);
+});
+
+/* Back */
+backBtn.addEventListener('click', ()=> {
+  if (countdownInterval) clearInterval(countdownInterval);
+  timerEl.classList.add('hidden');
+  step2.classList.add('hidden');
+  step1.classList.remove('hidden');
+});
+
+/* Show all */
+showAllBtn.addEventListener('click', ()=> {
+  renderQuestions(true);
+});
+
+/* Submit handling */
+submitBtn.addEventListener('click', submitExam);
+
+async function submitExam() {
+  // Collect answers
+  const formData = new FormData(quizForm);
+  const answers = [];
+  for (let i=0;i<QUESTIONS.length;i++){
+    const v = formData.get('q' + i);
+    answers.push(v === null ? null : Number(v));
+  }
+
+  // compute score
+  let correctCount = 0;
+  QUESTIONS.forEach((q,i)=> {
+    if (answers[i] !== null && Number(answers[i]) === q.a) correctCount++;
+  });
+  const totalScore = correctCount * POINTS_PER;
+
+  // show feedback
+  scoreBox.textContent = `Score: ${totalScore} / ${MAX_SCORE}  (${correctCount} correct out of ${QUESTIONS.length})`;
+  scoreBox.className = 'result ok';
+  feedback.innerHTML = '';
+  QUESTIONS.forEach((q,i)=>{
+    const user = answers[i];
+    const corr = q.a;
+    const div = document.createElement('div');
+    div.className = 'question';
+    if (user === null) {
+      div.innerHTML = `<div><strong>Q${i+1}.</strong> ${q.q}</div><div class="result err">No answer — Correct: ${String.fromCharCode(65+corr)}. ${q.opts[corr]}</div>`;
+    } else if (Number(user) === corr) {
+      div.innerHTML = `<div><strong>Q${i+1}.</strong> ${q.q}</div><div class="result ok">Your: ${String.fromCharCode(65+user)} — Correct</div>`;
+    } else {
+      div.innerHTML = `<div><strong>Q${i+1}.</strong> ${q.q}</div><div class="result err">Your: ${String.fromCharCode(65+user)} — Correct: ${String.fromCharCode(65+corr)}. ${q.opts[corr]}</div>`;
+    }
+    feedback.appendChild(div);
+  });
+
+  resultArea.classList.remove('hidden');
+
+  // prepare payload
+  const payload = {
+    name: sessionStorage.getItem('exam_name') || '',
+    studentId: sessionStorage.getItem('exam_id') || '',
+    className: sessionStorage.getItem('exam_class') || '',
+    email: sessionStorage.getItem('exam_email') || '',
+    score: totalScore,
+    maxScore: MAX_SCORE,
+    answers: answers
+  };
+
+  // stop timer
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  // send to server
+  try {
+    const res = await sendResult(payload);
+    if (res && res.status === 'success') {
+      alert('Submission saved. Thank you!');
+      localStorage.setItem('hasTakenExam_' + payload.studentId, 'true'); // backup
+    } else if (res && res.status === 'error') {
+      alert('Submission failed: ' + res.message);
+    } else {
+      alert('Unexpected response from server.');
+    }
+  } catch (err) {
+    alert('Failed to send results: ' + err.message + '\nPlease contact the admin.');
+  }
+}
+
+/* Optional: prevent reload/back navigation from losing data: save periodically */
+window.addEventListener('beforeunload', (e) => {
+  // nothing heavy; we allow normal behavior
+});
+
+</script>
+</body>
+</html>
